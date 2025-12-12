@@ -27,6 +27,7 @@ async function run() {
     const userCollection = database.collection("userInfo");
     const scoleCollection = database.collection("scoleInfo");
     const reviewCollection = database.collection("reviews");
+    const applicationsCollection = database.collection("applications");
 
     //post method
     app.post("/users", async (req, res) => {
@@ -54,6 +55,13 @@ async function run() {
       const review = req.body;
       review.createdAt = new Date();
       const result = await reviewCollection.insertOne(review);
+      res.send(result);
+    });
+
+    app.post("/applications", async (req, res) => {
+      const applications = req.body;
+      applications.createdAt = new Date();
+      const result = await applicationsCollection.insertOne(applications);
       res.send(result);
     });
 
@@ -88,6 +96,16 @@ async function run() {
         _id: new ObjectId(id),
       });
       res.send(scolership);
+    });
+
+    app.get("/applications", async (req, res) => {
+      try {
+        const applications = await applicationsCollection.find({}).toArray();
+        res.status(200).send(applications);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Failed to fetch applications" });
+      }
     });
 
     app.get("/reviews/:id", async (req, res) => {
