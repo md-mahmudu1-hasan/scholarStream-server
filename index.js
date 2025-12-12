@@ -43,7 +43,7 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/scolership", async (req, res) => {
+    app.post("/scholarship", async (req, res) => {
       const newScole = req.body;
       newScole.createdAt = new Date();
       const result = await scoleCollection.insertOne(newScole);
@@ -56,7 +56,6 @@ async function run() {
       const result = await reviewCollection.insertOne(review);
       res.send(result);
     });
-
 
     // GET user by id
     app.get("/users/:id", async (req, res) => {
@@ -75,8 +74,11 @@ async function run() {
       res.send(users);
     });
 
-    app.get("/scolership", async (req, res) => {
-      const scolership = await scoleCollection.find({}).sort({ createdAt: -1 }).toArray();
+    app.get("/scholarship", async (req, res) => {
+      const scolership = await scoleCollection
+        .find({})
+        .sort({ createdAt: -1 })
+        .toArray();
       res.send(scolership);
     });
 
@@ -100,10 +102,54 @@ async function run() {
       }
     });
 
-    app.delete("/scolership/:id", async (req, res) => {
+    app.patch("/scholarship/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedData = req.body;
+
+      try {
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: updatedData,
+        };
+
+        const result = await scoleCollection.updateOne(filter, updateDoc);
+
+        res.send({
+          success: true,
+          message: "Scholarship updated successfully",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Update failed",
+          error: error.message,
+        });
+      }
+    });
+
+    app.patch("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const role = req.body.role;
+      const result = await userCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { role } }
+      );
+      res.send(result);
+    });
+
+    app.delete("/scholarship/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await scoleCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    app.delete("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await userCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
       res.send(result);
     });
 
