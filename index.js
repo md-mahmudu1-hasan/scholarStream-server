@@ -51,16 +51,33 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/reviews", async (req, res) => {
-      const review = req.body;
-      review.createdAt = new Date();
-      const result = await reviewCollection.insertOne(review);
-      res.send(result);
+    app.post("/reviews/:id", async (req, res) => {
+      try {
+        const scholarshipId = req.params.id;
+        const review = req.body;
+        review.scholarshipId = scholarshipId;
+        review.createdAt = new Date();
+
+        const result = await reviewCollection.insertOne(review);
+
+        res.send({
+          success: true,
+          message: "Review added successfully",
+          data: result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Something went wrong",
+          error: error.message,
+        });
+      }
     });
 
     app.post("/applications", async (req, res) => {
       const applications = req.body;
       applications.createdAt = new Date();
+      applications.paymentStatus = "Unpaid";
       const result = await applicationsCollection.insertOne(applications);
       res.send(result);
     });
@@ -120,6 +137,34 @@ async function run() {
       }
     });
 
+    // userEmail দিয়ে review fetch করা
+    app.get("/reviews", async (req, res) => {
+      try {
+        const userEmail = req.query.userEmail;
+        if (!userEmail) {
+          return res.status(400).send({
+            success: false,
+            message: "userEmail query parameter is required",
+          });
+        }
+
+        const reviews = await reviewCollection
+          .find({ userEmail: userEmail })
+          .toArray();
+
+        res.send({
+          success: true,
+          data: reviews,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Something went wrong",
+          error: error.message,
+        });
+      }
+    });
+
     app.patch("/scholarship/:id", async (req, res) => {
       const id = req.params.id;
       const updatedData = req.body;
@@ -156,6 +201,18 @@ async function run() {
       res.send(result);
     });
 
+    app.patch("/applications/:id", async (req, res) => {
+      const id = req.params.id;
+      const updateData = req.body;
+
+      const result = await applicationsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updateData }
+      );
+
+      res.send(result);
+    });
+
     app.delete("/scholarship/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -166,6 +223,13 @@ async function run() {
     app.delete("/users/:id", async (req, res) => {
       const id = req.params.id;
       const result = await userCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
+    app.delete("/applications/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await applicationsCollection.deleteOne({
         _id: new ObjectId(id),
       });
       res.send(result);
