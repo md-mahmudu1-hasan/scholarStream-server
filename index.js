@@ -137,7 +137,6 @@ async function run() {
       }
     });
 
-    // userEmail দিয়ে review fetch করা
     app.get("/reviews", async (req, res) => {
       try {
         const userEmail = req.query.userEmail;
@@ -150,6 +149,7 @@ async function run() {
 
         const reviews = await reviewCollection
           .find({ userEmail: userEmail })
+          .sort({ createdAt: -1 })
           .toArray();
 
         res.send({
@@ -213,6 +213,37 @@ async function run() {
       res.send(result);
     });
 
+    app.patch("/reviews/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { reviewComment, ratingPoint } = req.body;
+
+        const updateDoc = {
+          $set: {
+            reviewComment,
+            ratingPoint,
+          },
+        };
+
+        const result = await reviewCollection.updateOne(
+          { _id: new ObjectId(id) },
+          updateDoc
+        );
+
+        res.send({
+          success: result.modifiedCount > 0,
+          message: "Review updated",
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: error.message,
+        });
+      }
+    });
+
+    // delete mathode
+
     app.delete("/scholarship/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -230,6 +261,13 @@ async function run() {
     app.delete("/applications/:id", async (req, res) => {
       const id = req.params.id;
       const result = await applicationsCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
+    app.delete("/reviews/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await reviewCollection.deleteOne({
         _id: new ObjectId(id),
       });
       res.send(result);
