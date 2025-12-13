@@ -1,8 +1,12 @@
 const express = require("express");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const cors = require("cors");
+require("dotenv").config();
 const app = express();
+const Stripe = require("stripe");
 const port = process.env.PORT || 3000;
+
+const stripe = new Stripe(process.env.STRIP_SECRET);
 
 app.use(cors());
 app.use(express.json());
@@ -82,7 +86,35 @@ async function run() {
       res.send(result);
     });
 
-    // GET user by id
+    app.post("/create-checkout-session", async (req, res) => {
+      const paymentInfo = req.body;
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: paymentInfo.ScholarshipName,
+              },
+              unit_amount: Number(paymentInfo.applicationFees * 100),
+            },
+            quantity: 1,
+          },
+        ],
+        customer_email: paymentInfo.ApplicantEmail,
+        mode: "payment",
+        metadata: {
+          applicationId: paymentInfo.applicationId,
+        },
+        success_url: `${process.env.SITE_DOMAIN}/payment-success?session_id=${paymentInfo.applicationId}`,
+        cancel_url: `${process.env.SITE_DOMAIN}/payment-canceled`,
+      });
+
+      res.send({ url: session.url });
+    });
+
+    // GET Methode
+
     app.get("/users/:id", async (req, res) => {
       const id = req.params.id;
       const user = await userCollection.findOne({ _id: new ObjectId(id) });
@@ -92,7 +124,8 @@ async function run() {
     app.get("/users", async (req, res) => {
       const email = req.query.email;
       if (email) {
-        const user = await userCollection.findOne({ email: email });
+        const user = await userCollection
+          .findOne({ email: email })
         return res.send(user);
       }
       const users = await userCollection.find({}).toArray();
@@ -117,11 +150,26 @@ async function run() {
 
     app.get("/applications", async (req, res) => {
       try {
-        const applications = await applicationsCollection.find({}).toArray();
+        const applications = await applicationsCollection
+          .find({})
+          .sort({ createdAt: -1 })
+          .toArray();
         res.status(200).send(applications);
       } catch (error) {
         console.error(error);
         res.status(500).send({ message: "Failed to fetch applications" });
+      }
+    });
+
+    app.get("/applications/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const applications = await applicationsCollection
+          .find({ _id: new ObjectId(id) })
+          .toArray();
+        res.send(applications);
+      } catch (err) {
+        res.status(500).send({ error: err.message });
       }
     });
 
@@ -164,6 +212,8 @@ async function run() {
         });
       }
     });
+
+    // patch mathode
 
     app.patch("/scholarship/:id", async (req, res) => {
       const id = req.params.id;
