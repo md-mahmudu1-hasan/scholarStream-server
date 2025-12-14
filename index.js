@@ -107,7 +107,7 @@ async function run() {
           applicationId: paymentInfo.applicationId,
         },
         success_url: `${process.env.SITE_DOMAIN}/payment-success?session_id=${paymentInfo.applicationId}`,
-        cancel_url: `${process.env.SITE_DOMAIN}/payment-canceled`,
+        cancel_url: `${process.env.SITE_DOMAIN}/payment-canceled?session_id=${paymentInfo.applicationId}`,
       });
 
       res.send({ url: session.url });
