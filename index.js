@@ -8,8 +8,33 @@ const port = process.env.PORT || 3000;
 
 const stripe = new Stripe(process.env.STRIP_SECRET);
 
+const admin = require("firebase-admin");
+
+const serviceAccount = require("./key.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+// middleware
 app.use(cors());
 app.use(express.json());
+
+const verifyToken = async (req, res, next) => {
+  const token = req.headers?.authorization;
+  if (!token) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+
+  try {
+    const idToken = token.split(" ")[1];
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    req.decoded_email = decoded.email;
+    next();
+  } catch (err) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+};
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
@@ -124,8 +149,7 @@ async function run() {
     app.get("/users", async (req, res) => {
       const email = req.query.email;
       if (email) {
-        const user = await userCollection
-          .findOne({ email: email })
+        const user = await userCollection.findOne({ email: email });
         return res.send(user);
       }
       const users = await userCollection.find({}).toArray();
@@ -185,18 +209,21 @@ async function run() {
       }
     });
 
-    app.get("/reviews", async (req, res) => {
+    app.get("/reviews", verifyToken, async (req, res) => {
       try {
         const userEmail = req.query.userEmail;
-        if (!userEmail) {
-          return res.status(400).send({
-            success: false,
-            message: "userEmail query parameter is required",
-          });
+
+        let query = {};
+        if (userEmail) {
+          query.userEmail = userEmail;
+
+          if (userEmail !== req.decoded_email) {
+            return res.status(403).send({ message: "forbidden access" });
+          }
         }
 
         const reviews = await reviewCollection
-          .find({ userEmail: userEmail })
+          .find(query)
           .sort({ createdAt: -1 })
           .toArray();
 
