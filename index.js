@@ -58,6 +58,29 @@ async function run() {
     const reviewCollection = database.collection("reviews");
     const applicationsCollection = database.collection("applications");
 
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded_email;
+      const query = { email };
+      const user = await userCollection.findOne(query);
+
+      if (!user || user.role !== "admin") {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+
+      next();
+    };
+    const verifyModerator = async (req, res, next) => {
+      const email = req.decoded_email;
+      const query = { email };
+      const user = await userCollection.findOne(query);
+
+      if (!user || user.role !== "moderator") {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+
+      next();
+    };
+
     //post method
     app.post("/users", async (req, res) => {
       const newUser = req.body;
@@ -140,13 +163,13 @@ async function run() {
 
     // GET Methode
 
-    app.get("/users/:id", async (req, res) => {
+    app.get("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const user = await userCollection.findOne({ _id: new ObjectId(id) });
       res.send(user);
     });
 
-    app.get("/users", async (req, res) => {
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const email = req.query.email;
       if (email) {
         const user = await userCollection.findOne({ email: email });
@@ -154,6 +177,13 @@ async function run() {
       }
       const users = await userCollection.find({}).toArray();
       res.send(users);
+    });
+
+    app.get("/users/:email/role", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const user = await userCollection.findOne(query);
+      res.send({ role: user?.role || "student" });
     });
 
     app.get("/scholarship", async (req, res) => {
@@ -172,7 +202,7 @@ async function run() {
       res.send(scolership);
     });
 
-    app.get("/applications", async (req, res) => {
+    app.get("/applications", verifyToken, verifyModerator, async (req, res) => {
       try {
         const applications = await applicationsCollection
           .find({})
@@ -278,17 +308,22 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/applications/:id", async (req, res) => {
-      const id = req.params.id;
-      const updateData = req.body;
+    app.patch(
+      "/applications/:id",
+      verifyToken,
+      verifyModerator,
+      async (req, res) => {
+        const id = req.params.id;
+        const updateData = req.body;
 
-      const result = await applicationsCollection.updateOne(
-        { _id: new ObjectId(id) },
-        { $set: updateData }
-      );
+        const result = await applicationsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updateData }
+        );
 
-      res.send(result);
-    });
+        res.send(result);
+      }
+    );
 
     app.patch("/reviews/:id", async (req, res) => {
       try {
@@ -328,20 +363,25 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/users/:id", async (req, res) => {
+    app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const result = await userCollection.deleteOne({
         _id: new ObjectId(id),
       });
       res.send(result);
     });
-    app.delete("/applications/:id", async (req, res) => {
-      const id = req.params.id;
-      const result = await applicationsCollection.deleteOne({
-        _id: new ObjectId(id),
-      });
-      res.send(result);
-    });
+    app.delete(
+      "/applications/:id",
+      verifyToken,
+      verifyModerator,
+      async (req, res) => {
+        const id = req.params.id;
+        const result = await applicationsCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.send(result);
+      }
+    );
     app.delete("/reviews/:id", async (req, res) => {
       const id = req.params.id;
       const result = await reviewCollection.deleteOne({
