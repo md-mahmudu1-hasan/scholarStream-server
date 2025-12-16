@@ -169,7 +169,7 @@ async function run() {
       res.send(user);
     });
 
-    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
+    app.get("/users", verifyToken, async (req, res) => {
       const email = req.query.email;
       if (email) {
         const user = await userCollection.findOne({ email: email });
@@ -202,12 +202,19 @@ async function run() {
       res.send(scolership);
     });
 
-    app.get("/applications", verifyToken, verifyModerator, async (req, res) => {
+    app.get("/applications", async (req, res) => {
       try {
+        const email = req.query.email;
+        let query = {};
+        if (email) {
+          query = { ApplicantEmail: email };
+        }
+
         const applications = await applicationsCollection
-          .find({})
+          .find(query)
           .sort({ createdAt: -1 })
           .toArray();
+
         res.status(200).send(applications);
       } catch (error) {
         console.error(error);
@@ -308,22 +315,17 @@ async function run() {
       res.send(result);
     });
 
-    app.patch(
-      "/applications/:id",
-      verifyToken,
-      verifyModerator,
-      async (req, res) => {
-        const id = req.params.id;
-        const updateData = req.body;
+    app.patch("/applications/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const updateData = req.body;
 
-        const result = await applicationsCollection.updateOne(
-          { _id: new ObjectId(id) },
-          { $set: updateData }
-        );
+      const result = await applicationsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updateData }
+      );
 
-        res.send(result);
-      }
-    );
+      res.send(result);
+    });
 
     app.patch("/reviews/:id", async (req, res) => {
       try {
