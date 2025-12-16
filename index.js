@@ -40,8 +40,7 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-const uri =
-  "mongodb+srv://scolership:EPKPXqemfiA4T5Gr@cluster0.6l2dtxw.mongodb.net/?appName=Cluster0";
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.6l2dtxw.mongodb.net/?appName=Cluster0`;
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
