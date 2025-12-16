@@ -186,63 +186,81 @@ async function run() {
     });
 
     app.get("/scholarship", async (req, res) => {
-  try {
-    const {
-      page = 1,
-      limit = 6,
-      search = "",
-      subject = "",
-      location = "",
-      sort = "date_desc", // default newest first
-    } = req.query;
+      try {
+        const {
+          page = 1,
+          limit = 6,
+          search = "",
+          subject = "",
+          location = "",
+          sort = "date_desc", // default newest first
+        } = req.query;
 
-    const skip = (Number(page) - 1) * Number(limit);
+        const skip = (Number(page) - 1) * Number(limit);
 
-    // 🔍 Search + Filter Query
-    const query = {
-      $and: [
-        search
-          ? {
-              $or: [
-                { scholarshipName: { $regex: search, $options: "i" } },
-                { universityName: { $regex: search, $options: "i" } },
-                { degree: { $regex: search, $options: "i" } },
-              ],
-            }
-          : {},
-        subject ? { subject } : {},
-        location ? { location } : {},
-      ],
-    };
+        // 🔍 Search + Filter Query
+        const query = {
+          $and: [
+            search
+              ? {
+                  $or: [
+                    { scholarshipName: { $regex: search, $options: "i" } },
+                    { universityName: { $regex: search, $options: "i" } },
+                    { degree: { $regex: search, $options: "i" } },
+                  ],
+                }
+              : {},
+            subject ? { subject } : {},
+            location ? { location } : {},
+          ],
+        };
 
-    // 🔃 Sort Logic
-    let sortQuery = {};
-    if (sort === "fee_asc") sortQuery = { applicationFees: 1 };
-    if (sort === "fee_desc") sortQuery = { applicationFees: -1 };
-    if (sort === "date_asc") sortQuery = { createdAt: 1 };
-    if (sort === "date_desc") sortQuery = { createdAt: -1 };
+        // 🔃 Sort Logic
+        let sortQuery = {};
+        if (sort === "fee_asc") sortQuery = { applicationFees: 1 };
+        if (sort === "fee_desc") sortQuery = { applicationFees: -1 };
+        if (sort === "date_asc") sortQuery = { createdAt: 1 };
+        if (sort === "date_desc") sortQuery = { createdAt: -1 };
 
-    const total = await scoleCollection.countDocuments(query);
+        const total = await scoleCollection.countDocuments(query);
 
-    const scholarships = await scoleCollection
-      .find(query)
-      .sort(sortQuery)
-      .skip(skip)
-      .limit(Number(limit))
-      .toArray();
+        const scholarships = await scoleCollection
+          .find(query)
+          .sort(sortQuery)
+          .skip(skip)
+          .limit(Number(limit))
+          .toArray();
 
-    res.send({
-      data: scholarships,
-      total,
-      page: Number(page),
-      totalPages: Math.ceil(total / limit),
+        res.send({
+          data: scholarships,
+          total,
+          page: Number(page),
+          totalPages: Math.ceil(total / limit),
+        });
+      } catch (error) {
+        res.status(500).send({ message: "Server Error" });
+      }
     });
-  } catch (error) {
-    res.status(500).send({ message: "Server Error" });
-  }
-});
 
-
+    app.get("/applications/universityName/stats", async (req, res) => {
+      const pipeline = [
+        {
+          $group: {
+            _id: "$universityName",
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            universityName: "$_id",
+            count: 1,
+            // _id: 0
+          },
+        },
+      ];
+      const result = await applicationsCollection.aggregate(pipeline).toArray();
+      res.send(result);
+    });
     app.get("/scholarship/:id", async (req, res) => {
       const id = req.params.id;
       const scolership = await scoleCollection.findOne({
