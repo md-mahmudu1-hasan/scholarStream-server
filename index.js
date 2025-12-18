@@ -14,7 +14,9 @@ const admin = require("firebase-admin");
 
 // const serviceAccount = require("./firebase-admin-key.json");
 
-const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
+  "utf8"
+);
 const serviceAccount = JSON.parse(decoded);
 
 admin.initializeApp({
@@ -444,18 +446,13 @@ async function run() {
       });
       res.send(result);
     });
-    app.delete(
-      "/applications/:id",
-      verifyToken,
-      verifyModerator,
-      async (req, res) => {
-        const id = req.params.id;
-        const result = await applicationsCollection.deleteOne({
-          _id: new ObjectId(id),
-        });
-        res.send(result);
-      }
-    );
+    app.delete("/applications/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await applicationsCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
     app.delete("/reviews/:id", async (req, res) => {
       const id = req.params.id;
       const result = await reviewCollection.deleteOne({
